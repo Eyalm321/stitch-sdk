@@ -19,6 +19,8 @@ Do not hard-code the API surface. Read it from the codebase at invocation time:
 | Domain class methods + signatures | Source files for each exported class (`sdk.ts`, `project.ts`, `screen.ts`) |
 | Generated method bindings | `packages/sdk/generated/domain-map.json` → `bindings[]` array |
 | Handwritten methods | Methods in class source files that aren't in domain-map bindings (e.g. `Screen.edit`, `Screen.variants`) |
+| AI SDK tools adapter | `packages/sdk/src/tools-adapter.ts` → `stitchTools()` function |
+| Generated tool definitions | `packages/sdk/generated/src/tool-definitions.ts` → JSON Schema for each tool |
 | Tool client methods | `packages/sdk/src/client.ts` |
 | Error codes | `packages/sdk/src/spec/errors.ts` → `StitchErrorCode` |
 | Config options | `packages/sdk/src/spec/client.ts` → `StitchConfigSchema` |
@@ -54,8 +56,9 @@ Show this as the first code block, with one line noting the env var requirement.
 **Secondary workflows** — reveal depth progressively:
 1. Listing and iterating over existing projects/screens
 2. Editing a screen and generating variants
-3. Explicit configuration (non-singleton)
-4. The tool client for agent usage (`StitchToolClient`)
+3. Tool access via singleton (`stitch.listTools()`, `stitch.callTool()`) — zero setup
+4. Explicit configuration via `StitchToolClient` (custom API key, base URL)
+5. AI SDK integration via `stitchTools()` — show `generateText` with `tools: stitchTools()` and `stepCountIs`
 
 Rules for this section:
 - **No setup first.** One line mentioning `STITCH_API_KEY` is enough before the first example.
@@ -67,7 +70,7 @@ Rules for this section:
 
 The reader is committed. Document the full API as a reference.
 
-Structure by class in this order: `Stitch` → `Project` → `Screen` → `StitchToolClient` → `StitchProxy` → `stitch` singleton.
+Structure by class in this order: `Stitch` → `Project` → `Screen` → `StitchToolClient` → `stitchTools()` (AI SDK) → `StitchProxy` → `stitch` singleton.
 
 Each entry should have:
 - What it does (one line)
@@ -95,7 +98,7 @@ After generating the README, verify:
 - [ ] Does the reference section cover every public export from `index.ts`?
 - [ ] Every method name in examples exists in its class source file
 - [ ] Every import in examples matches an export in `index.ts`
-- [ ] Both modalities are documented (StitchToolClient for agents, domain classes for scripts)
+- [ ] All three modalities are documented: domain classes (scripts), `StitchToolClient` (agents), `stitchTools()` (AI SDK)
 
 ## Anti-patterns
 
