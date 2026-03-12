@@ -28,19 +28,6 @@ export class Stitch {
         }
     }
 
-    /**
-     * Retrieves the details of a specific Stitch project using its project name.
-     * Tool: get_project
-     */
-    async getProject(projectId: any): Promise<Project> {
-        try {
-          const raw = await this.client.callTool<any>("get_project", { projectId, name: `projects/${projectId}` });
-          return new Project(this.client, raw);
-        } catch (error) {
-          throw StitchError.fromUnknown(error);
-        }
-    }
-
     /** Create a Project handle from an existing ID without an API call. */
     project(id: string): Project {
         return new Project(this.client, id);

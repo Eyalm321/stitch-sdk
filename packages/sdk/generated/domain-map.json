@@ -206,24 +206,6 @@
       }
     },
     {
-      "tool": "get_project",
-      "class": "Stitch",
-      "method": "getProject",
-      "args": {
-        "projectId": {
-          "from": "param"
-        },
-        "name": {
-          "from": "computed",
-          "template": "projects/{projectId}"
-        }
-      },
-      "returns": {
-        "class": "Project",
-        "projection": []
-      }
-    },
-    {
       "tool": "get_screen",
       "class": "Project",
       "method": "getScreen",

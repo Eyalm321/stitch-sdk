@@ -10,14 +10,14 @@
     "generatedAt": "2026-03-12T15:11:01.970Z",
     "sourceHash": "sha256:cea9331adba84d7c6a1e79a28399558ce286f952dff83bd7cd280aa2d57c6cff",
     "manifestHash": "sha256:1f84b31604f95580325952f0c150a3e045543fad2596e9a4d8ed15c07e0cbf9b",
-    "domainMapHash": "sha256:49ed76857ca38b8df687014e82377a40f0509ebc3158574bec35d13290dbf29b",
+    "domainMapHash": "sha256:f547ba4dfc303b49d0bd07002769ae8bdea4406f95cb0535a73d1595c0e1a236",
     "fileCount": 5
   },
   "domainMap": {
     "generatedAt": "2026-03-12T15:11:01.970Z",
-    "sourceHash": "sha256:49ed76857ca38b8df687014e82377a40f0509ebc3158574bec35d13290dbf29b",
+    "sourceHash": "sha256:f547ba4dfc303b49d0bd07002769ae8bdea4406f95cb0535a73d1595c0e1a236",
     "manifestHash": "sha256:1f84b31604f95580325952f0c150a3e045543fad2596e9a4d8ed15c07e0cbf9b",
     "classCount": 3,
-    "bindingCount": 9
+    "bindingCount": 8
   }
 }
