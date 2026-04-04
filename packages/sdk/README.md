@@ -179,6 +179,8 @@ await client.close();
 
 ### `StitchProxy`
 
+For a more advanced example of building a custom MCP server with compound tools, see the [MCP Server Example](./examples/mcp-server/README.md).
+
 An MCP proxy server that forwards requests to Stitch. Use this to expose Stitch tools through your own MCP server.
 
 ```ts
