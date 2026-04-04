@@ -289,6 +289,13 @@ Error codes: `AUTH_FAILED`, `NOT_FOUND`, `PERMISSION_DENIED`, `RATE_LIMITED`, `N
 
 ---
 
+## Examples
+
+- [Basic Design Generation](./examples/basic-design/README.md)
+
+---
+
+
 ## Disclaimer
 
 This is not an officially supported Google product. This project is not
