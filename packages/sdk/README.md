@@ -2,6 +2,11 @@
 
 Generate UI screens from text prompts and extract their HTML and screenshots programmatically.
 
+## Examples
+
+See the [examples/](examples/) directory for complete use cases:
+- [Next.js Integration](examples/nextjs-integration/): Agent Skill for building Next.js apps from designs.
+
 ## Quick Start
 
 Set your API key and generate a screen:
