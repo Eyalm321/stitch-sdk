@@ -85,6 +85,13 @@ for (const variant of variants) {
 | `creativeRange` | `string` | `"EXPLORE"` | `"REFINE"`, `"EXPLORE"`, or `"REIMAGINE"` |
 | `aspects` | `string[]` | all | `"LAYOUT"`, `"COLOR_SCHEME"`, `"IMAGES"`, `"TEXT_FONT"`, `"TEXT_CONTENT"` |
 
+## Examples
+
+We provide examples in the `examples/` directory covering various integration points:
+
+- **[Astro Multipage](examples/astro-multipage/)**: An Agent Skill demonstrating how to map multiple generated screens to Astro page routes and extract a shared theme.
+- For more details and scripts, browse the [examples directory](examples/).
+
 ## Tool Client (Agent Usage)
 
 For agents and orchestration scripts that need direct MCP tool access:
