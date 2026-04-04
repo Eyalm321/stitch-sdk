@@ -110,6 +110,10 @@ await client.close();
 
 The client auto-connects on the first `callTool` or `listTools` call. No explicit `connect()` needed.
 
+## Examples
+
+- [Vite + Tailwind v4 Preview App](examples/vite-preview/README.md): Teaches an agent how to convert Stitch designs to Vite + React apps using Tailwind v4.
+
 ## API Reference
 
 ### `Stitch`
