@@ -298,3 +298,6 @@ Program](https://bughunters.google.com/open-source-security).
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
+## Examples
+
+- [Design Iteration Workflow](./examples/design-iteration/): Agent Skill demonstrating iterative generation and refinement of designs.
