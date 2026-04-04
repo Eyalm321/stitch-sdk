@@ -298,3 +298,8 @@ Program](https://bughunters.google.com/open-source-security).
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
+## Examples
+
+Check out the [examples/](examples/) directory for practical guides on integrating Stitch:
+
+- **CI Visual Testing** (`ci-visual-testing/`): Shows how to integrate Stitch into a CI pipeline for visual diffs and screenshot baseline evaluation.
