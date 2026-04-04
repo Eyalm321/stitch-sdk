@@ -298,3 +298,5 @@ Program](https://bughunters.google.com/open-source-security).
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
+## Examples
+- [Stitch CLI](examples/stitch-cli/README.md) - An agent-first CLI wrapper demonstrating JSON input/output and schema introspection.
