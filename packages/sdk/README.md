@@ -289,6 +289,10 @@ Error codes: `AUTH_FAILED`, `NOT_FOUND`, `PERMISSION_DENIED`, `RATE_LIMITED`, `N
 
 ---
 
+## Examples
+
+- [HTML Email from Design](./examples/html-to-email/README.md) - Agent CLI tool to generate email-ready HTML designs.
+
 ## Disclaimer
 
 This is not an officially supported Google product. This project is not
