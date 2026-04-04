@@ -30,6 +30,11 @@ To use `stitchTools()` with the [Vercel AI SDK](https://sdk.vercel.ai/), install
 npm install @google/stitch-sdk ai
 ```
 
+## Examples
+
+Check out the [examples directory](./examples) for practical integrations, including:
+- [Screenshot Gallery](./examples/screenshot-gallery)
+
 ## Working with Projects and Screens
 
 ### List existing projects
