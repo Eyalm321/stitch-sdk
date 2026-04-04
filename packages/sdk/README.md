@@ -85,6 +85,11 @@ for (const variant of variants) {
 | `creativeRange` | `string` | `"EXPLORE"` | `"REFINE"`, `"EXPLORE"`, or `"REIMAGINE"` |
 | `aspects` | `string[]` | all | `"LAYOUT"`, `"COLOR_SCHEME"`, `"IMAGES"`, `"TEXT_FONT"`, `"TEXT_CONTENT"` |
 
+
+## Examples
+
+- [Design to React Component](examples/design-to-react) — Agent skill for interpreting HTML and extracting React components.
+
 ## Tool Client (Agent Usage)
 
 For agents and orchestration scripts that need direct MCP tool access:
