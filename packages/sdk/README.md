@@ -11,7 +11,9 @@ import { stitch } from "@google/stitch-sdk";
 
 // STITCH_API_KEY must be set in the environment
 const project = await stitch.createProject("My App");
-const screen = await project.generate("A login page with email and password fields");
+const screen = await project.generate(
+  "A login page with email and password fields",
+);
 const html = await screen.getHtml();
 const imageUrl = await screen.getImage();
 ```
@@ -79,11 +81,30 @@ for (const variant of variants) {
 
 `variantOptions` fields:
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `variantCount` | `number` | 3 | Number of variants (1–5) |
-| `creativeRange` | `string` | `"EXPLORE"` | `"REFINE"`, `"EXPLORE"`, or `"REIMAGINE"` |
-| `aspects` | `string[]` | all | `"LAYOUT"`, `"COLOR_SCHEME"`, `"IMAGES"`, `"TEXT_FONT"`, `"TEXT_CONTENT"` |
+| Field           | Type       | Default     | Description                                                               |
+| --------------- | ---------- | ----------- | ------------------------------------------------------------------------- |
+| `variantCount`  | `number`   | 3           | Number of variants (1–5)                                                  |
+| `creativeRange` | `string`   | `"EXPLORE"` | `"REFINE"`, `"EXPLORE"`, or `"REIMAGINE"`                                 |
+| `aspects`       | `string[]` | all         | `"LAYOUT"`, `"COLOR_SCHEME"`, `"IMAGES"`, `"TEXT_FONT"`, `"TEXT_CONTENT"` |
+
+## Examples
+
+Check out the [examples/](examples/) directory for practical guides on integrating Stitch:
+
+- [Batch Design Generation](./examples/batch-generation/README.md) - Generate multiple designs in parallel from a JSON list of prompts.
+- [Vite + Tailwind v4 Preview App](./examples/vite-preview/README.md) - Teaches an agent how to convert Stitch designs to Vite + React apps using Tailwind v4.
+- [Astro Multipage](./examples/astro-multipage/README.md) - An Agent Skill demonstrating how to map multiple generated screens to Astro page routes and extract a shared theme.
+- [Screenshot Gallery](./examples/screenshot-gallery/README.md) - Iterate over screens in a Stitch project, retrieve their screenshot URLs, and generate a simple HTML gallery page.
+- [Design System Extraction](./examples/design-system-extraction/README.md) - Agent Skill for extracting a unified design system from multiple screens.
+- [Basic Design Generation](./examples/basic-design/README.md) - A Script example demonstrating the most basic usage of the Stitch SDK.
+- [Browse and Export](./examples/browse-and-export/README.md) - A script example demonstrating how to list projects, list screens, and download HTML and screenshots to local files.
+- [CI Visual Testing](./examples/ci-visual-testing/README.md) - Shows how to integrate Stitch into a CI pipeline for visual diffs and screenshot baseline evaluation.
+- [HTML Email from Design](./examples/html-to-email/README.md) - Agent CLI tool to generate email-ready HTML designs.
+- [Design Iteration Workflow](./examples/design-iteration/README.md) - Agent Skill demonstrating iterative generation and refinement of designs.
+- [Tool Filtering](./examples/tool-filtering/README.md) - Example of filtering available tools with the `include` parameter.
+- [Design to React Component](./examples/design-to-react/README.md) - Agent skill for interpreting HTML and extracting React components.
+- [Next.js Integration](./examples/nextjs-integration/README.md) - Agent Skill for building Next.js apps from designs.
+- [Stitch CLI](./examples/stitch-cli/README.md) - An agent-first CLI wrapper demonstrating JSON input/output and schema introspection.
 
 ## Tool Client (Agent Usage)
 
@@ -116,26 +137,26 @@ The client auto-connects on the first `callTool` or `listTools` call. No explici
 
 The root class. Manages projects.
 
-| Method | Parameters | Returns | Description |
-|---|---|---|---|
-| `createProject(title)` | `title: string` | `Promise<Project>` | Create a new project |
-| `projects()` | — | `Promise<Project[]>` | List all accessible projects |
-| `project(id)` | `id: string` | `Project` | Reference a project by ID (no API call) |
+| Method                 | Parameters      | Returns              | Description                             |
+| ---------------------- | --------------- | -------------------- | --------------------------------------- |
+| `createProject(title)` | `title: string` | `Promise<Project>`   | Create a new project                    |
+| `projects()`           | —               | `Promise<Project[]>` | List all accessible projects            |
+| `project(id)`          | `id: string`    | `Project`            | Reference a project by ID (no API call) |
 
 ### `Project`
 
 A Stitch project containing screens.
 
-| Property | Type | Description |
-|---|---|---|
-| `id` | `string` | Alias for `projectId` |
+| Property    | Type     | Description                             |
+| ----------- | -------- | --------------------------------------- |
+| `id`        | `string` | Alias for `projectId`                   |
 | `projectId` | `string` | Bare project ID (no `projects/` prefix) |
 
-| Method | Parameters | Returns | Description |
-|---|---|---|---|
-| `generate(prompt, deviceType?)` | `prompt: string`, `deviceType?: DeviceType` | `Promise<Screen>` | Generate a screen from a text prompt |
-| `screens()` | — | `Promise<Screen[]>` | List all screens in the project |
-| `getScreen(screenId)` | `screenId: string` | `Promise<Screen>` | Retrieve a specific screen by ID |
+| Method                          | Parameters                                  | Returns             | Description                          |
+| ------------------------------- | ------------------------------------------- | ------------------- | ------------------------------------ |
+| `generate(prompt, deviceType?)` | `prompt: string`, `deviceType?: DeviceType` | `Promise<Screen>`   | Generate a screen from a text prompt |
+| `screens()`                     | —                                           | `Promise<Screen[]>` | List all screens in the project      |
+| `getScreen(screenId)`           | `screenId: string`                          | `Promise<Screen>`   | Retrieve a specific screen by ID     |
 
 `DeviceType`: `"MOBILE"` \| `"DESKTOP"` \| `"TABLET"` \| `"AGNOSTIC"`
 
@@ -143,18 +164,18 @@ A Stitch project containing screens.
 
 A generated UI screen. Provides access to HTML and screenshots.
 
-| Property | Type | Description |
-|---|---|---|
-| `id` | `string` | Alias for `screenId` |
-| `screenId` | `string` | Bare screen ID |
-| `projectId` | `string` | Parent project ID |
+| Property    | Type     | Description          |
+| ----------- | -------- | -------------------- |
+| `id`        | `string` | Alias for `screenId` |
+| `screenId`  | `string` | Bare screen ID       |
+| `projectId` | `string` | Parent project ID    |
 
-| Method | Parameters | Returns | Description |
-|---|---|---|---|
-| `edit(prompt, deviceType?, modelId?)` | `prompt: string` | `Promise<Screen>` | Edit the screen with a text prompt |
-| `variants(prompt, variantOptions, deviceType?, modelId?)` | `prompt: string`, `variantOptions: object` | `Promise<Screen[]>` | Generate design variants |
-| `getHtml()` | — | `Promise<string>` | Get the screen's HTML download URL |
-| `getImage()` | — | `Promise<string>` | Get the screen's screenshot download URL |
+| Method                                                    | Parameters                                 | Returns             | Description                              |
+| --------------------------------------------------------- | ------------------------------------------ | ------------------- | ---------------------------------------- |
+| `edit(prompt, deviceType?, modelId?)`                     | `prompt: string`                           | `Promise<Screen>`   | Edit the screen with a text prompt       |
+| `variants(prompt, variantOptions, deviceType?, modelId?)` | `prompt: string`, `variantOptions: object` | `Promise<Screen[]>` | Generate design variants                 |
+| `getHtml()`                                               | —                                          | `Promise<string>`   | Get the screen's HTML download URL       |
+| `getImage()`                                              | —                                          | `Promise<string>`   | Get the screen's screenshot download URL |
 
 `getHtml()` and `getImage()` use cached data from the generation response when available. If the screen was loaded from `screens()` or `getScreen()`, they call the `get_screen` API automatically.
 
@@ -170,14 +191,16 @@ const result = await client.callTool<any>("tool_name", { arg: "value" });
 await client.close();
 ```
 
-| Method | Parameters | Returns | Description |
-|---|---|---|---|
-| `callTool<T>(name, args)` | `name: string`, `args: Record<string, any>` | `Promise<T>` | Call an MCP tool |
-| `listTools()` | — | `Promise<{ tools }>` | List available tools |
-| `connect()` | — | `Promise<void>` | Explicitly connect (auto-called by `callTool`) |
-| `close()` | — | `Promise<void>` | Close the connection |
+| Method                    | Parameters                                  | Returns              | Description                                    |
+| ------------------------- | ------------------------------------------- | -------------------- | ---------------------------------------------- |
+| `callTool<T>(name, args)` | `name: string`, `args: Record<string, any>` | `Promise<T>`         | Call an MCP tool                               |
+| `listTools()`             | —                                           | `Promise<{ tools }>` | List available tools                           |
+| `connect()`               | —                                           | `Promise<void>`      | Explicitly connect (auto-called by `callTool`) |
+| `close()`                 | —                                           | `Promise<void>`      | Close the connection                           |
 
 ### `StitchProxy`
+
+For a more advanced example of building a custom MCP server with compound tools, see the [MCP Server Example](./examples/mcp-server/README.md).
 
 An MCP proxy server that forwards requests to Stitch. Use this to expose Stitch tools through your own MCP server.
 
@@ -212,10 +235,10 @@ import { stitch } from "@google/stitch-sdk";
 const tool = stitch.toolMap.get("generate_screen_from_text");
 if (tool) {
   // Pre-parsed params — no JSON Schema parsing needed
-  const required = tool.params.filter(p => p.required);
-  const optional = tool.params.filter(p => !p.required);
-  console.log(required.map(p => p.name)); // ["projectId", "prompt"]
-  console.log(optional.map(p => p.name)); // ["deviceType", "modelId"]
+  const required = tool.params.filter((p) => p.required);
+  const optional = tool.params.filter((p) => !p.required);
+  console.log(required.map((p) => p.name)); // ["projectId", "prompt"]
+  console.log(optional.map((p) => p.name)); // ["deviceType", "modelId"]
 }
 
 // Iterate all tools
@@ -234,12 +257,12 @@ The raw `inputSchema` (`ToolInputSchema`) is also available on each entry. Stand
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `STITCH_API_KEY` | Yes (or use OAuth) | API key for authentication |
-| `STITCH_ACCESS_TOKEN` | No | OAuth access token (alternative to API key) |
-| `GOOGLE_CLOUD_PROJECT` | With OAuth | Google Cloud project ID |
-| `STITCH_HOST` | No | Override the MCP server URL |
+| Variable               | Required           | Description                                 |
+| ---------------------- | ------------------ | ------------------------------------------- |
+| `STITCH_API_KEY`       | Yes (or use OAuth) | API key for authentication                  |
+| `STITCH_ACCESS_TOKEN`  | No                 | OAuth access token (alternative to API key) |
+| `GOOGLE_CLOUD_PROJECT` | With OAuth         | Google Cloud project ID                     |
+| `STITCH_HOST`          | No                 | Override the MCP server URL                 |
 
 ### Explicit Configuration
 
@@ -256,13 +279,13 @@ const sdk = new Stitch(client);
 const projects = await sdk.projects();
 ```
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `apiKey` | `string` | `STITCH_API_KEY` | API key |
-| `accessToken` | `string` | `STITCH_ACCESS_TOKEN` | OAuth token |
-| `projectId` | `string` | `GOOGLE_CLOUD_PROJECT` | Cloud project ID |
-| `baseUrl` | `string` | `https://stitch.googleapis.com/mcp` | MCP server URL |
-| `timeout` | `number` | `300000` | Request timeout (ms) |
+| Option        | Type     | Default                             | Description          |
+| ------------- | -------- | ----------------------------------- | -------------------- |
+| `apiKey`      | `string` | `STITCH_API_KEY`                    | API key              |
+| `accessToken` | `string` | `STITCH_ACCESS_TOKEN`               | OAuth token          |
+| `projectId`   | `string` | `GOOGLE_CLOUD_PROJECT`              | Cloud project ID     |
+| `baseUrl`     | `string` | `https://stitch.googleapis.com/mcp` | MCP server URL       |
+| `timeout`     | `number` | `300000`                            | Request timeout (ms) |
 
 Authentication requires either `apiKey` or both `accessToken` and `projectId`.
 
@@ -278,8 +301,8 @@ try {
   await project.screens();
 } catch (error) {
   if (error instanceof StitchError) {
-    console.error(error.code);        // "UNKNOWN_ERROR"
-    console.error(error.message);     // Human-readable description
+    console.error(error.code); // "UNKNOWN_ERROR"
+    console.error(error.message); // Human-readable description
     console.error(error.recoverable); // false
   }
 }
