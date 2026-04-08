@@ -60,8 +60,9 @@ describe('DownloadAssetsHandler', () => {
     const handler = new DownloadAssetsHandler(mockClient);
     await handler.execute({ projectId: 'p1', outputDir: '/tmp/out' });
 
+    // Temp paths contain only random bytes — the sanitized filename only appears in rename dest.
     expect(fs.writeFile).toHaveBeenCalledWith(
-      expect.stringContaining('badname'),
+      expect.stringContaining('.tmp-'),
       expect.any(Object),
       expect.objectContaining({ flag: 'wx', mode: 0o600 })
     );

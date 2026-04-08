@@ -16,7 +16,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import * as cheerio from 'cheerio';
-import { Element } from 'domhandler';
+import type { AnyNode } from 'domhandler';
 import type { StitchToolClientSpec } from './spec/client.js';
 import { DownloadAssetsInputSchema } from './spec/download.js';
 import type { DownloadAssetsSpec, DownloadAssetsInput, DownloadAssetsResult } from './spec/download.js';
@@ -101,7 +101,7 @@ export class DownloadAssetsHandler implements DownloadAssetsSpec {
 
         const rewrittenHtml = $.html();
         const filename = `${screen.id}.html`;
-        const tempFilename = `.tmp-${crypto.randomBytes(8).toString('hex')}-${filename}`;
+        const tempFilename = `.tmp-${crypto.randomBytes(8).toString('hex')}`;
         const tempPath = path.join(resolvedTempDir, tempFilename);
         const targetPath = path.join(outputDir, filename);
 
@@ -126,7 +126,7 @@ export class DownloadAssetsHandler implements DownloadAssetsSpec {
 
   private async _downloadAndRewrite(
     $: cheerio.CheerioAPI,
-    el: Element,
+    el: AnyNode,
     attr: string,
     url: string,
     assetsDir: string,
@@ -148,7 +148,7 @@ export class DownloadAssetsHandler implements DownloadAssetsSpec {
 
     const filename = sanitizedBase ? `${sanitizedBase}-${hash}${ext}` : `${hash}${ext}`;
     const fullPath = path.join(assetsDir, filename);
-    const tempFilename = `.tmp-${crypto.randomBytes(8).toString('hex')}-${filename}`;
+    const tempFilename = `.tmp-${crypto.randomBytes(8).toString('hex')}`;
     const tempFullPath = path.join(resolvedTempDir, tempFilename);
 
     await fs.writeFile(tempFullPath, Buffer.from(buffer), { flag: 'wx', mode: fileMode });
