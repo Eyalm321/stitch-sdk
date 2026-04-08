@@ -21,6 +21,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
     ...real,
     mkdir: vi.fn().mockResolvedValue(undefined),
     writeFile: vi.fn().mockResolvedValue(undefined),
+    rename: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -61,7 +62,13 @@ describe('DownloadAssetsHandler', () => {
 
     expect(fs.writeFile).toHaveBeenCalledWith(
       expect.stringContaining('badname'),
-      expect.any(Object)
+      expect.any(Object),
+      expect.objectContaining({ flag: 'wx', mode: 0o600 })
+    );
+
+    expect(fs.rename).toHaveBeenCalledWith(
+      expect.stringContaining('.tmp-'),
+      expect.stringContaining('badname')
     );
   });
 
@@ -121,7 +128,92 @@ describe('DownloadAssetsHandler', () => {
       expect(result.error.code).toBe('UNKNOWN_ERROR');
     }
   });
+
+  it('respects custom fileMode option', async () => {
+    const fs = await import("node:fs/promises");
+    vi.mocked(fs.writeFile).mockClear();
+
+    const mockClient = { callTool: vi.fn() } as any;
+    const mockScreen = { id: 's1', htmlCode: { downloadUrl: 'http://fake/s1.html' } };
+    mockClient.callTool.mockResolvedValue({ screens: [mockScreen] });
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+      if (url === 'http://fake/s1.html') {
+        return Promise.resolve({ text: () => Promise.resolve('<html></html>') });
+      }
+      return Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+    }));
+
+    const handler = new DownloadAssetsHandler(mockClient);
+    await handler.execute({ projectId: 'p1', outputDir: '/tmp/out', fileMode: 0o644 });
+
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.anything(),
+      expect.objectContaining({ mode: 0o644 })
+    );
+  });
+
+  it('uses custom assetsSubdir option', async () => {
+    const fs = await import("node:fs/promises");
+    vi.mocked(fs.mkdir).mockClear();
+    vi.mocked(fs.writeFile).mockClear();
+
+    const mockClient = { callTool: vi.fn() } as any;
+    const mockScreen = {
+      id: 's1',
+      htmlCode: { downloadUrl: 'http://fake/s1.html' }
+    };
+    mockClient.callTool.mockResolvedValue({ screens: [mockScreen] });
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+      if (url === 'http://fake/s1.html') {
+        return Promise.resolve({ text: () => Promise.resolve('<html><img src="http://example.com/img.png"></html>') });
+      }
+      return Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+    }));
+
+    const handler = new DownloadAssetsHandler(mockClient);
+    await handler.execute({ projectId: 'p1', outputDir: '/tmp/out', assetsSubdir: 'static' });
+
+    expect(fs.mkdir).toHaveBeenCalledWith(
+      expect.stringContaining('static'),
+      expect.anything()
+    );
+  });
+
+  it('uses custom tempDir for atomic temp files', async () => {
+    const fs = await import("node:fs/promises");
+    vi.mocked(fs.writeFile).mockClear();
+    vi.mocked(fs.rename).mockClear();
+
+    const mockClient = { callTool: vi.fn() } as any;
+    const mockScreen = { id: 's1', htmlCode: { downloadUrl: 'http://fake/s1.html' } };
+    mockClient.callTool.mockResolvedValue({ screens: [mockScreen] });
+
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+      if (url === 'http://fake/s1.html') {
+        return Promise.resolve({ text: () => Promise.resolve('<html></html>') });
+      }
+      return Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+    }));
+
+    const handler = new DownloadAssetsHandler(mockClient);
+    await handler.execute({ projectId: 'p1', outputDir: '/tmp/out', tempDir: '/custom/tmp' });
+
+    // Temp writes go to /custom/tmp, final rename targets go to /tmp/out
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('/custom/tmp/'),
+      expect.anything(),
+      expect.objectContaining({ flag: 'wx' })
+    );
+    expect(fs.rename).toHaveBeenCalledWith(
+      expect.stringContaining('/custom/tmp/'),
+      expect.stringContaining('/tmp/out/')
+    );
+  });
 });
+
 
 describe('sanitizeFilename', () => {
   it('removes special characters', () => {

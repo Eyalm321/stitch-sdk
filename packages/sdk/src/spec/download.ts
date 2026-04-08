@@ -22,9 +22,31 @@ export const DownloadAssetsInputSchema = z.object({
   projectId: z.string().min(1),
   /** Absolute path to the directory where screens and assets should be saved. */
   outputDir: z.string().min(1),
+  /**
+   * Unix file-permission bits for all written files (HTML and assets).
+   * Defaults to 0o600 (owner read/write only).
+   * A CLI serving files via a web server (e.g. nginx) may need 0o644.
+   */
+  fileMode: z.number().int().optional().default(0o600),
+  /**
+   * Directory used for atomic temp files before rename.
+   * Defaults to outputDir. Override to use a RAM disk or OS temp dir.
+   *
+   * IMPORTANT: tempDir MUST be on the same filesystem as outputDir for
+   * fs.rename() to be atomic. Cross-device renames (EXDEV) will fall back
+   * to a copy-then-delete strategy automatically.
+   */
+  tempDir: z.string().optional(),
+  /**
+   * Name of the subdirectory inside outputDir where downloaded assets are saved.
+   * Defaults to 'assets'. Override to e.g. 'static' or 'public'.
+   * Path separators are stripped — only the basename is used.
+   */
+  assetsSubdir: z.string().default('assets'),
 });
 
 export type DownloadAssetsInput = z.infer<typeof DownloadAssetsInputSchema>;
+
 
 // ── Error Codes ────────────────────────────────────────────────────────────────
 

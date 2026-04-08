@@ -20,13 +20,37 @@ import { Element } from 'domhandler';
 import type { StitchToolClientSpec } from './spec/client.js';
 import type { DownloadAssetsSpec, DownloadAssetsInput, DownloadAssetsResult } from './spec/download.js';
 
+/** Atomically rename src → dest, falling back to copy+delete on EXDEV. */
+async function atomicRename(src: string, dest: string): Promise<void> {
+  try {
+    await fs.rename(src, dest);
+  } catch (err: any) {
+    if (err?.code === 'EXDEV') {
+      // Cross-device: tempDir and outputDir are on different filesystems.
+      await fs.copyFile(src, dest);
+      await fs.unlink(src);
+    } else {
+      throw err;
+    }
+  }
+}
+
 export class DownloadAssetsHandler implements DownloadAssetsSpec {
   constructor(private client: StitchToolClientSpec) {}
 
   async execute(input: DownloadAssetsInput): Promise<DownloadAssetsResult> {
     try {
-      const { projectId, outputDir } = input;
-      const assetsDir = path.join(outputDir, 'assets');
+      const {
+        projectId,
+        outputDir,
+        fileMode = 0o600,
+        tempDir,
+        assetsSubdir = 'assets',
+      } = input;
+      const resolvedTempDir = tempDir ?? outputDir;
+      // Guard assetsSubdir: strip any path separators — only use the basename.
+      const safeSubdir = path.basename(assetsSubdir) || 'assets';
+      const assetsDir = path.join(outputDir, safeSubdir);
       await fs.mkdir(assetsDir, { recursive: true });
 
       // 1. List screens
@@ -60,23 +84,27 @@ export class DownloadAssetsHandler implements DownloadAssetsSpec {
         $('img').each((_, el) => {
           const src = $(el).attr('src');
           if (src && src.startsWith('http')) {
-            assetPromises.push(this._downloadAndRewrite($, el, 'src', src, assetsDir, 'assets'));
+            assetPromises.push(this._downloadAndRewrite($, el, 'src', src, assetsDir, safeSubdir, resolvedTempDir, fileMode));
           }
         });
 
         $('link[rel="stylesheet"]').each((_, el) => {
           const href = $(el).attr('href');
           if (href && href.startsWith('http')) {
-            assetPromises.push(this._downloadAndRewrite($, el, 'href', href, assetsDir, 'assets'));
+            assetPromises.push(this._downloadAndRewrite($, el, 'href', href, assetsDir, safeSubdir, resolvedTempDir, fileMode));
           }
         });
 
         await Promise.all(assetPromises);
 
-        // Save the rewritten HTML
         const rewrittenHtml = $.html();
         const filename = `${screen.id}.html`;
-        await fs.writeFile(path.join(outputDir, filename), rewrittenHtml);
+        const tempFilename = `.tmp-${crypto.randomBytes(8).toString('hex')}-${filename}`;
+        const tempPath = path.join(resolvedTempDir, tempFilename);
+        const targetPath = path.join(outputDir, filename);
+
+        await fs.writeFile(tempPath, rewrittenHtml, { flag: 'wx', mode: fileMode });
+        await atomicRename(tempPath, targetPath);
 
         downloadedScreens.push(screen.id);
       }
@@ -100,7 +128,9 @@ export class DownloadAssetsHandler implements DownloadAssetsSpec {
     attr: string,
     url: string,
     assetsDir: string,
-    relativePrefix: string
+    relativePrefix: string,
+    resolvedTempDir: string,
+    fileMode: number,
   ): Promise<void> {
     const res = await fetch(url);
     const buffer = await res.arrayBuffer();
@@ -110,15 +140,18 @@ export class DownloadAssetsHandler implements DownloadAssetsSpec {
     const rawFilename = path.basename(decodedPath);
     const ext = path.extname(rawFilename);
     const hash = crypto.createHash('md5').update(url).digest('hex');
-    
+
     // SANITIZATION: Only allow alphanumeric, hyphen, underscore
     const sanitizedBase = sanitizeFilename(rawFilename, ext);
-    
+
     const filename = sanitizedBase ? `${sanitizedBase}-${hash}${ext}` : `${hash}${ext}`;
     const fullPath = path.join(assetsDir, filename);
-    
-    await fs.writeFile(fullPath, Buffer.from(buffer));
-    
+    const tempFilename = `.tmp-${crypto.randomBytes(8).toString('hex')}-${filename}`;
+    const tempFullPath = path.join(resolvedTempDir, tempFilename);
+
+    await fs.writeFile(tempFullPath, Buffer.from(buffer), { flag: 'wx', mode: fileMode });
+    await atomicRename(tempFullPath, fullPath);
+
     $(el).attr(attr, `${relativePrefix}/${filename}`);
   }
 }

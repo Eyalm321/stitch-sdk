@@ -29,6 +29,7 @@ import { Screen } from '../generated/src/screen.js';
 import { StitchError, StitchErrorCode } from './spec/errors.js';
 import * as cheerio from 'cheerio';
 import { DownloadAssetsHandler } from './download-handler.js';
+import { DownloadAssetsInputSchema } from './spec/download.js';
 import {
   UploadImageInputSchema,
   type UploadImageInput,
@@ -211,9 +212,17 @@ export class Project extends GeneratedProject {
    *
    * @param outputDir - The directory to save assets to.
    */
-  async downloadAssets(outputDir: string): Promise<void> {
+  async downloadAssets(
+    outputDir: string,
+    opts?: { fileMode?: number; tempDir?: string; assetsSubdir?: string },
+  ): Promise<void> {
     const handler = new DownloadAssetsHandler((this as any).client);
-    const result = await handler.execute({ projectId: (this as any).projectId, outputDir });
+    const input = DownloadAssetsInputSchema.parse({
+      projectId: (this as any).projectId,
+      outputDir,
+      ...opts,
+    });
+    const result = await handler.execute(input);
     if (!result.success) {
       let code: StitchErrorCode = 'UNKNOWN_ERROR';
       switch (result.error.code) {
