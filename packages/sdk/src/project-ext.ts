@@ -27,11 +27,48 @@
 import { Project as GeneratedProject } from '../generated/src/project.js';
 import { Screen } from '../generated/src/screen.js';
 import { StitchError } from './spec/errors.js';
+import * as cheerio from 'cheerio';
 import {
   UploadImageInputSchema,
   type UploadImageInput,
 } from './spec/upload.js';
 import { UploadImageHandler } from './upload-handler.js';
+
+interface ExtractionRule {
+  target: 'customColor' | 'headlineFont' | 'roundness';
+  matches: (property: string, value: string) => boolean;
+  extract: (value: string) => string | undefined;
+}
+
+const EXTRACTION_RULES: ExtractionRule[] = [
+  {
+    target: 'customColor',
+    matches: (prop, val) => prop.includes('color') && val.startsWith('#') && val.length === 7,
+    extract: (val) => val,
+  },
+  {
+    target: 'headlineFont',
+    matches: (prop, _) => prop.includes('font-family'),
+    extract: (val) => {
+      let font = val.split(',')[0].trim();
+      if (font.startsWith("'") || font.startsWith('"')) font = font.slice(1);
+      if (font.endsWith("'") || font.endsWith('"')) font = font.slice(0, -1);
+      return font;
+    },
+  },
+  {
+    target: 'roundness',
+    matches: (prop, _) => prop.includes('border-radius'),
+    extract: (val) => {
+      if (val.endsWith('px')) {
+        const px = parseInt(val.slice(0, -2));
+        if (px >= 8) return "ROUND_EIGHT";
+        if (px >= 4) return "ROUND_FOUR";
+      }
+      return undefined;
+    },
+  },
+];
 
 export class Project extends GeneratedProject {
   /**
@@ -72,5 +109,169 @@ export class Project extends GeneratedProject {
     }
 
     return result.screens;
+  }
+
+  /**
+   * Parses HTML of a screen to extract theme tokens.
+   * Maps them to the expected Stitch API Theme schema.
+   *
+   * @param screenId - The ID of the screen to analyze.
+   * @returns A partial theme object.
+   */
+  async inferTheme(screenId: string): Promise<any> {
+    const screen = await this.getScreen(screenId);
+    const htmlUrl = await screen.getHtml();
+
+    if (!htmlUrl) {
+      throw new Error(`Screen ${screenId} has no HTML URL`);
+    }
+
+    const html = await this['client'].fetch(htmlUrl).then((r: any) => r.text());
+    const $ = cheerio.load(html);
+
+    const stylesText = $('style').text();
+    const declarations = stylesText.split(';').map(s => s.trim());
+    const result: Record<string, string | undefined> = {};
+
+    for (const decl of declarations) {
+      const parts = decl.split(':');
+      if (parts.length !== 2) continue;
+      const property = parts[0].trim();
+      const value = parts[1].trim();
+
+      for (const rule of EXTRACTION_RULES) {
+        if (rule.matches(property, value)) {
+          const extracted = rule.extract(value);
+          if (extracted !== undefined) {
+            result[rule.target] = extracted;
+          }
+        }
+      }
+    }
+
+    return {
+      customColor: result.customColor,
+      headlineFont: result.headlineFont,
+      roundness: result.roundness
+    };
+  }
+
+  /**
+   * Injects design system tokens into a prompt to guide generation.
+   *
+   * @param prompt - The original user prompt.
+   * @param theme - The theme tokens to inject.
+   * @returns The enhanced prompt.
+   */
+  themePrompt(prompt: string, theme: any): string {
+    let themeInstructions = "\n\nUse the following design system tokens strictly:\n";
+    
+    if (theme.customColor) {
+      themeInstructions += `- Primary Color: ${theme.customColor}\n`;
+    }
+    if (theme.headlineFont) {
+      themeInstructions += `- Typography: Use ${theme.headlineFont} for headings and body text.\n`;
+    }
+    if (theme.roundness) {
+      themeInstructions += `- Roundness: Use ${theme.roundness} style for corners.\n`;
+    }
+
+    return `${prompt}${themeInstructions}`;
+  }
+
+  /**
+   * Orchestrates the API dance for creating/updating design systems.
+   * If a design system exists for the project, updates it.
+   * Otherwise, creates a new one.
+   *
+   * @param theme - The theme tokens to sync.
+   * @returns The DesignSystem handle.
+   */
+  async syncTheme(theme: any): Promise<any> {
+    const list = await (this as any).listDesignSystems();
+    
+    if (list.length > 0) {
+      const existing = list[0];
+      return await existing.update({ theme });
+    } else {
+      return await (this as any).createDesignSystem({ theme });
+    }
+  }
+
+  /**
+   * Downloads all screens and their referenced assets to a local directory.
+   * Rewrites URLs in HTML to be self-contained.
+   *
+   * @param outputDir - The directory to save assets to.
+   */
+  async downloadAssets(outputDir: string): Promise<void> {
+    const cheerio = await import('cheerio');
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
+    await fs.mkdir(outputDir, { recursive: true });
+    const assetsDir = path.join(outputDir, 'assets');
+    await fs.mkdir(assetsDir, { recursive: true });
+
+    const screens = await (this as any).screens();
+
+    for (const screen of screens) {
+      const htmlUrl = await screen.getHtml();
+      if (!htmlUrl) continue;
+
+      const html = await this['client'].fetch(htmlUrl).then((r: any) => r.text());
+      const $ = cheerio.load(html);
+
+      const assetPromises: Promise<void>[] = [];
+
+      $('img').each((_, el) => {
+        const src = $(el).attr('src');
+        if (src && src.startsWith('http')) {
+          assetPromises.push(this._downloadAndRewrite($, el, 'src', src, assetsDir, 'assets'));
+        }
+      });
+
+      $('link[rel="stylesheet"]').each((_, el) => {
+        const href = $(el).attr('href');
+        if (href && href.startsWith('http')) {
+          assetPromises.push(this._downloadAndRewrite($, el, 'href', href, assetsDir, 'assets'));
+        }
+      });
+
+      await Promise.all(assetPromises);
+
+      const rewrittenHtml = $.html();
+      const filename = `${screen.id}.html`;
+      await fs.writeFile(path.join(outputDir, filename), rewrittenHtml);
+    }
+  }
+
+  private async _downloadAndRewrite($: any, el: any, attr: string, url: string, assetsDir: string, relativePrefix: string): Promise<void> {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const crypto = await import('crypto');
+
+    try {
+      const response = await this['client'].fetch(url);
+      const buffer = await response.arrayBuffer();
+
+      const urlObj = new URL(url);
+      let filename = path.basename(urlObj.pathname);
+      if (!filename || filename === '/') {
+        filename = crypto.createHash('md5').update(url).digest('hex');
+      } else {
+        const hash = crypto.createHash('md5').update(url).digest('hex').slice(0, 8);
+        const ext = path.extname(filename);
+        const base = path.basename(filename, ext);
+        filename = `${base}-${hash}${ext}`;
+      }
+
+      const fullPath = path.join(assetsDir, filename);
+      await fs.writeFile(fullPath, Buffer.from(buffer));
+
+      $(el).attr(attr, `${relativePrefix}/${filename}`);
+    } catch (e) {
+      console.error(`Failed to download asset ${url}:`, e);
+    }
   }
 }

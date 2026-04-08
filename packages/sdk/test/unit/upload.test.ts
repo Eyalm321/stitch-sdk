@@ -183,7 +183,7 @@ describe("UploadImageHandler (fs mocked)", () => {
   // Test 6 (real): successful upload returns Screen[]
   it("returns Screen[] on a successful upload", async () => {
     const httpPost = vi.fn().mockResolvedValue({
-      screens: [{ name: "projects/proj-1/screens/s-abc", title: "Test" }],
+      results: [{ screen: { name: "projects/proj-1/screens/s-abc", title: "Test" } }],
     });
     const handler = new UploadImageHandler(createMockClient({ httpPost }));
     const result = await handler.execute("proj-1", {
@@ -271,7 +271,7 @@ describe("Project.uploadImage (integration)", () => {
   // Test 13: returns Screen[] on success
   it("returns Screen[] when the upload succeeds", async () => {
     const httpPost = vi.fn().mockResolvedValue({
-      screens: [{ name: "projects/test-project-id/screens/s-xyz", title: "Uploaded" }],
+      results: [{ screen: { name: "projects/test-project-id/screens/s-xyz", title: "Uploaded" } }],
     });
     const proj = createProjectWithMockedClient(httpPost);
     const screens = await proj.uploadImage("/fake/design.png");

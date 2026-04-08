@@ -19,6 +19,7 @@ import { forwardToStitch, initializeStitchConnection } from '../src/proxy/client
 import { registerListToolsHandler } from '../src/proxy/handlers/listTools.js';
 import { registerCallToolHandler } from '../src/proxy/handlers/callTool.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { VIRTUAL_TOOLS } from '../src/proxy/virtual-tools.js';
 
 
 
@@ -192,7 +193,7 @@ describe('Proxy Handlers', () => {
 
     const result = await handler({} as any, {} as any);
 
-    expect(result).toEqual({ tools: [{ name: 'refreshed-tool' }] });
+    expect(result).toEqual({ tools: [{ name: 'refreshed-tool' }, ...VIRTUAL_TOOLS] });
     expect(ctx.remoteTools).toEqual([{ name: 'refreshed-tool' }]);
   });
 
@@ -212,7 +213,7 @@ describe('Proxy Handlers', () => {
     const result = await handler({} as any, {} as any);
 
     // Should return existing tools if refresh fails
-    expect(result).toEqual({ tools: [{ name: 'existing-tool' }] });
+    expect(result).toEqual({ tools: [{ name: 'existing-tool' }, ...VIRTUAL_TOOLS] });
     expect(console.error).toHaveBeenCalledWith(
       '[stitch-proxy] Failed to refresh tools:',
       expect.any(Error)
