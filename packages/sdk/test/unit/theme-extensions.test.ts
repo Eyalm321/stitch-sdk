@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Project } from "../../src/project-ext.js";
 import { StitchToolClient } from "../../src/client.js";
 
@@ -15,13 +15,24 @@ describe("Theme Extensions", () => {
     mockClient.callTool = vi.fn();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   describe("Project.inferTheme()", () => {
     it("should infer theme tokens from screen HTML", async () => {
       const project = new Project(mockClient, projectId);
       const screenId = "screen-1";
 
-      // Mock get_screen tool call
-      (mockClient.callTool as any).mockImplementation(async (tool: string, args: any) => {
+      // Mock tools
+      vi.mocked(mockClient.callTool).mockImplementation(async (tool: string, args: any) => {
+        if (tool === "list_screens") {
+          return {
+            screens: [
+              { id: screenId, name: `projects/${projectId}/screens/${screenId}` }
+            ]
+          };
+        }
         if (tool === "get_screen") {
           return {
             name: `projects/${projectId}/screens/${screenId}`,
@@ -32,7 +43,7 @@ describe("Theme Extensions", () => {
       });
 
       // Mock fetch for the HTML content
-      (mockClient.fetch as any) = vi.fn().mockResolvedValue({
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         text: async () => `
           <html>
             <head>
@@ -44,9 +55,9 @@ describe("Theme Extensions", () => {
             <body>Hello</body>
           </html>
         `
-      });
+      }));
 
-      // @ts-expect-error - method does not exist yet (TDD Red)
+
       const theme = await project.inferTheme(screenId);
 
       expect(theme).toEqual({
@@ -67,7 +78,7 @@ describe("Theme Extensions", () => {
         roundness: "ROUND_EIGHT"
       };
 
-      // @ts-expect-error - method does not exist yet (TDD Red)
+
       const enhancedPrompt = project.themePrompt(prompt, theme);
 
       expect(enhancedPrompt).toContain("Create a landing page");
@@ -96,7 +107,7 @@ describe("Theme Extensions", () => {
         return {};
       });
 
-      // @ts-expect-error - method does not exist yet (TDD Red)
+
       const ds = await project.syncTheme(theme);
 
       expect(mockClient.callTool).toHaveBeenCalledWith("list_design_systems", { projectId });
@@ -129,7 +140,7 @@ describe("Theme Extensions", () => {
         return {};
       });
 
-      // @ts-expect-error - method does not exist yet (TDD Red)
+
       const ds = await project.syncTheme(theme);
 
       expect(mockClient.callTool).toHaveBeenCalledWith("list_design_systems", { projectId });
@@ -170,7 +181,7 @@ describe("Theme Extensions", () => {
         return {};
       });
 
-      (mockClient.fetch as any) = vi.fn().mockImplementation(async (url: string) => {
+      vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
         if (url === "https://example.com/screen1.html") {
           return {
             text: async () => `
@@ -186,15 +197,21 @@ describe("Theme Extensions", () => {
           };
         }
         if (url === "https://example.com/style.css") {
-          return { arrayBuffer: async () => Buffer.from("body { color: red; }").buffer };
+          const str = "body { color: red; }";
+          const ab = new ArrayBuffer(str.length);
+          const view = new Uint8Array(ab);
+          for (let i = 0; i < str.length; i++) {
+            view[i] = str.charCodeAt(i);
+          }
+          return { arrayBuffer: async () => ab };
         }
         if (url === "https://example.com/image.png") {
           return { arrayBuffer: async () => new ArrayBuffer(8) };
         }
         return null;
-      });
+      }));
 
-      // @ts-expect-error - method does not exist yet (TDD Red)
+
       await project.downloadAssets(testOutputDir);
 
       const fs = await import('fs/promises');
