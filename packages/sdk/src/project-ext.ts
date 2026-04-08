@@ -119,14 +119,20 @@ export class Project extends GeneratedProject {
    * @returns A partial theme object.
    */
   async inferTheme(screenId: string): Promise<any> {
-    const screen = await this.getScreen(screenId);
+    const screens = await this.screens();
+    const screen = screens.find(s => s.id === screenId);
+    if (!screen) {
+      throw new Error(`Screen ${screenId} not found in project`);
+    }
     const htmlUrl = await screen.getHtml();
+    console.log(`[DEBUG] inferTheme: htmlUrl for screen ${screenId} is "${htmlUrl}"`);
+    console.log(`[DEBUG] inferTheme: screen data:`, JSON.stringify((screen as any).data));
 
     if (!htmlUrl) {
       throw new Error(`Screen ${screenId} has no HTML URL`);
     }
 
-    const html = await this['client'].fetch(htmlUrl).then((r: any) => r.text());
+    const html = await fetch(htmlUrl).then((r: any) => r.text());
     const $ = cheerio.load(html);
 
     const stylesText = $('style').text();
@@ -219,7 +225,7 @@ export class Project extends GeneratedProject {
       const htmlUrl = await screen.getHtml();
       if (!htmlUrl) continue;
 
-      const html = await this['client'].fetch(htmlUrl).then((r: any) => r.text());
+      const html = await fetch(htmlUrl).then((r: any) => r.text());
       const $ = cheerio.load(html);
 
       const assetPromises: Promise<void>[] = [];
@@ -252,19 +258,16 @@ export class Project extends GeneratedProject {
     const crypto = await import('crypto');
 
     try {
-      const response = await this['client'].fetch(url);
+      const response = await fetch(url);
       const buffer = await response.arrayBuffer();
 
       const urlObj = new URL(url);
-      let filename = path.basename(urlObj.pathname);
-      if (!filename || filename === '/') {
-        filename = crypto.createHash('md5').update(url).digest('hex');
-      } else {
-        const hash = crypto.createHash('md5').update(url).digest('hex').slice(0, 8);
-        const ext = path.extname(filename);
-        const base = path.basename(filename, ext);
-        filename = `${base}-${hash}${ext}`;
-      }
+      const rawFilename = path.basename(urlObj.pathname);
+      const ext = path.extname(rawFilename);
+      const hash = crypto.createHash('md5').update(url).digest('hex');
+      // Limit base filename to 100 chars to avoid ENAMETOOLONG
+      const base = path.basename(rawFilename, ext).slice(0, 100);
+      const filename = base ? `${base}-${hash}${ext}` : `${hash}${ext}`;
 
       const fullPath = path.join(assetsDir, filename);
       await fs.writeFile(fullPath, Buffer.from(buffer));
