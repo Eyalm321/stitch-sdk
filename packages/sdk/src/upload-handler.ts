@@ -88,21 +88,7 @@ export class UploadImageHandler implements UploadImageSpec {
       };
     }
 
-    // ── Step 2: Verify file exists → typed error code ────────────────────────
-    try {
-      await fs.access(input.filePath);
-    } catch {
-      return {
-        success: false,
-        error: {
-          code: 'FILE_NOT_FOUND',
-          message: `File not found: ${input.filePath}`,
-          recoverable: false,
-        },
-      };
-    }
-
-    // ── Step 3: Read, encode, POST ───────────────────────────────────────────
+    // ── Step 2: Read, encode, POST ───────────────────────────────────────────
     try {
       const fileContentBase64 = await fs.readFile(input.filePath, {
         encoding: 'base64',
@@ -119,7 +105,7 @@ export class UploadImageHandler implements UploadImageSpec {
         body,
       );
 
-      // ── Step 4: Project the response into Screen[] ───────────────────────
+      // ── Step 3: Project the response into Screen[] ───────────────────────
       // BatchCreateScreens returns { results: [{ screen: { ... } }] }
       const results: Array<{ screen: any }> = raw?.results ?? [];
       const screens: Screen[] = results.map((r) => {
@@ -137,6 +123,16 @@ export class UploadImageHandler implements UploadImageSpec {
 
       return { success: true, screens };
     } catch (err) {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
+        return {
+          success: false,
+          error: {
+            code: 'FILE_NOT_FOUND',
+            message: `File not found: ${input.filePath}`,
+            recoverable: false,
+          },
+        };
+      }
       const msg = err instanceof Error ? err.message : String(err);
       const code: UploadImageErrorCode =
         msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('auth')

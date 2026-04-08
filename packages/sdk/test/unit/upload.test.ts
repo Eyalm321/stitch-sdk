@@ -89,8 +89,8 @@ describe("UploadImageHandler", () => {
   // temporarily restore the real behavior for this test.
   it("returns FILE_NOT_FOUND for a nonexistent .png path", async () => {
     const fs = await import("node:fs/promises");
-    const realAccess = (await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises")).access;
-    vi.mocked(fs.access).mockImplementationOnce(realAccess as any);
+    const realReadFile = (await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises")).readFile;
+    vi.mocked(fs.readFile).mockImplementationOnce(realReadFile as any);
 
     const handler = new UploadImageHandler(createMockClient());
     const result = await handler.execute("proj-1", {
@@ -194,6 +194,21 @@ describe("UploadImageHandler (fs mocked)", () => {
     if (result.success) {
       expect(result.screens).toHaveLength(1);
     }
+  });
+
+  it("does not call fs.access when reading file", async () => {
+    const fs = await import("node:fs/promises");
+    vi.mocked(fs.access).mockClear();
+    
+    const httpPost = vi.fn().mockResolvedValue({ results: [] });
+    const handler = new UploadImageHandler(createMockClient({ httpPost }));
+    
+    await handler.execute("proj-1", {
+      filePath: "/fake/design.png",
+      createScreenInstances: true,
+    });
+    
+    expect(fs.access).not.toHaveBeenCalled();
   });
 
   // Test 7 (real): UPLOAD_FAILED when httpPost throws

@@ -26,8 +26,9 @@
 
 import { Project as GeneratedProject } from '../generated/src/project.js';
 import { Screen } from '../generated/src/screen.js';
-import { StitchError } from './spec/errors.js';
+import { StitchError, StitchErrorCode } from './spec/errors.js';
 import * as cheerio from 'cheerio';
+import { DownloadAssetsHandler } from './download-handler.js';
 import {
   UploadImageInputSchema,
   type UploadImageInput,
@@ -211,70 +212,26 @@ export class Project extends GeneratedProject {
    * @param outputDir - The directory to save assets to.
    */
   async downloadAssets(outputDir: string): Promise<void> {
-    const cheerio = await import('cheerio');
-    const fs = await import('fs/promises');
-    const path = await import('path');
-
-    await fs.mkdir(outputDir, { recursive: true });
-    const assetsDir = path.join(outputDir, 'assets');
-    await fs.mkdir(assetsDir, { recursive: true });
-
-    const screens = await (this as any).screens();
-
-    for (const screen of screens) {
-      const htmlUrl = await screen.getHtml();
-      if (!htmlUrl) continue;
-
-      const html = await fetch(htmlUrl).then((r: any) => r.text());
-      const $ = cheerio.load(html);
-
-      const assetPromises: Promise<void>[] = [];
-
-      $('img').each((_, el) => {
-        const src = $(el).attr('src');
-        if (src && src.startsWith('http')) {
-          assetPromises.push(this._downloadAndRewrite($, el, 'src', src, assetsDir, 'assets'));
-        }
+    const handler = new DownloadAssetsHandler((this as any).client);
+    const result = await handler.execute({ projectId: (this as any).projectId, outputDir });
+    if (!result.success) {
+      let code: StitchErrorCode = 'UNKNOWN_ERROR';
+      switch (result.error.code) {
+        case 'PROJECT_NOT_FOUND':
+          code = 'NOT_FOUND';
+          break;
+        case 'FETCH_FAILED':
+          code = 'NETWORK_ERROR';
+          break;
+        case 'PATH_TRAVERSAL_ATTEMPT':
+          code = 'VALIDATION_ERROR';
+          break;
+      }
+      throw new StitchError({
+        code,
+        message: result.error.message,
+        recoverable: result.error.recoverable,
       });
-
-      $('link[rel="stylesheet"]').each((_, el) => {
-        const href = $(el).attr('href');
-        if (href && href.startsWith('http')) {
-          assetPromises.push(this._downloadAndRewrite($, el, 'href', href, assetsDir, 'assets'));
-        }
-      });
-
-      await Promise.all(assetPromises);
-
-      const rewrittenHtml = $.html();
-      const filename = `${screen.id}.html`;
-      await fs.writeFile(path.join(outputDir, filename), rewrittenHtml);
-    }
-  }
-
-  private async _downloadAndRewrite($: any, el: any, attr: string, url: string, assetsDir: string, relativePrefix: string): Promise<void> {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    const crypto = await import('crypto');
-
-    try {
-      const response = await fetch(url);
-      const buffer = await response.arrayBuffer();
-
-      const urlObj = new URL(url);
-      const rawFilename = path.basename(urlObj.pathname);
-      const ext = path.extname(rawFilename);
-      const hash = crypto.createHash('md5').update(url).digest('hex');
-      // Limit base filename to 100 chars to avoid ENAMETOOLONG
-      const base = path.basename(rawFilename, ext).slice(0, 100);
-      const filename = base ? `${base}-${hash}${ext}` : `${hash}${ext}`;
-
-      const fullPath = path.join(assetsDir, filename);
-      await fs.writeFile(fullPath, Buffer.from(buffer));
-
-      $(el).attr(attr, `${relativePrefix}/${filename}`);
-    } catch (e) {
-      console.error(`Failed to download asset ${url}:`, e);
     }
   }
 }

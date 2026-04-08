@@ -1,0 +1,148 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import { describe, it, expect, vi } from 'vitest';
+import { DownloadAssetsHandler, sanitizeFilename } from '../../src/download-handler.js';
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...real,
+    mkdir: vi.fn().mockResolvedValue(undefined),
+    writeFile: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+describe('DownloadAssetsHandler', () => {
+  it('can be instantiated', () => {
+    const handler = new DownloadAssetsHandler({} as any);
+    expect(handler).toBeDefined();
+  });
+
+  it('sanitizes asset filenames', async () => {
+    const fs = await import("node:fs/promises");
+    vi.mocked(fs.writeFile).mockClear();
+    
+    const mockClient = {
+      callTool: vi.fn().mockResolvedValue({
+        screens: [{ id: 's1', name: 'projects/p1/screens/s1' }] // Mock screen object
+      }),
+    } as any;
+    
+    // Wait, getHtml is a method on Screen class in generated code!
+    // If I mock callTool('list_screens') it returns raw objects!
+    const mockScreen = {
+      id: 's1',
+      htmlCode: { downloadUrl: 'http://fake/s1.html' }
+    };
+    mockClient.callTool.mockResolvedValue({ screens: [mockScreen] });
+
+    const mockFetch = vi.fn().mockImplementation((url) => {
+      if (url === 'http://fake/s1.html') {
+        return Promise.resolve({ text: () => Promise.resolve('<html><img src="http://example.com/bad name.png"></html>') });
+      }
+      return Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = new DownloadAssetsHandler(mockClient);
+    await handler.execute({ projectId: 'p1', outputDir: '/tmp/out' });
+
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('badname'),
+      expect.any(Object)
+    );
+  });
+
+  it('prevents directory traversal', async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    vi.mocked(fs.writeFile).mockClear();
+    
+    const mockClient = {
+      callTool: vi.fn().mockResolvedValue({
+        screens: [{ id: 's1', name: 'projects/p1/screens/s1' }]
+      }),
+    } as any;
+    
+    const mockScreen = {
+      id: 's1',
+      getHtml: vi.fn().mockResolvedValue('http://fake/s1.html'),
+    };
+    mockClient.callTool.mockResolvedValue({ screens: [mockScreen] });
+
+    const mockFetch = vi.fn().mockImplementation((url) => {
+      if (url === 'http://fake/s1.html') {
+        return Promise.resolve({ text: () => Promise.resolve('<html><img src="http://example.com/%2e%2e/etc/passwd"></html>') });
+      }
+      return Promise.resolve({ arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const handler = new DownloadAssetsHandler(mockClient);
+    await handler.execute({ projectId: 'p1', outputDir: '/tmp/out' });
+
+    const calls = vi.mocked(fs.writeFile).mock.calls;
+    for (const [filePath] of calls) {
+      expect(typeof filePath).toBe('string');
+      if (typeof filePath === 'string') {
+        if (filePath.includes('/assets/')) {
+          expect(filePath).toContain('/tmp/out/assets/');
+          const filename = path.basename(filePath);
+          expect(filename).not.toContain('..');
+        } else {
+          expect(filePath).toBe('/tmp/out/s1.html');
+        }
+      }
+    }
+  });
+
+  it('returns failure if list_screens fails', async () => {
+    const mockClient = {
+      callTool: vi.fn().mockRejectedValue(new Error('API Error')),
+    } as any;
+
+    const handler = new DownloadAssetsHandler(mockClient);
+    const result = await handler.execute({ projectId: 'p1', outputDir: '/tmp/out' });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('UNKNOWN_ERROR');
+    }
+  });
+});
+
+describe('sanitizeFilename', () => {
+  it('removes special characters', () => {
+    const result = sanitizeFilename('bad name!@#$%^&*().png', '.png');
+    expect(result).toBe('badname');
+  });
+
+  it('keeps alphanumeric, hyphen, and underscore', () => {
+    const result = sanitizeFilename('good-name_123.png', '.png');
+    expect(result).toBe('good-name_123');
+  });
+
+  it('slices to 100 characters', () => {
+    const longName = 'a'.repeat(150) + '.png';
+    const result = sanitizeFilename(longName, '.png');
+    expect(result.length).toBe(100);
+    expect(result).toBe('a'.repeat(100));
+  });
+
+  it('handles empty base name after sanitization', () => {
+    const result = sanitizeFilename('!!!.png', '.png');
+    expect(result).toBe('');
+  });
+});
