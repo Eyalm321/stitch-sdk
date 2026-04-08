@@ -182,6 +182,46 @@ export class StitchToolClient implements StitchToolClientSpec {
     return this.parseToolResponse<T>(result, name);
   }
 
+  /**
+   * Make a direct REST POST to the Stitch API.
+   *
+   * Used for endpoints not available as MCP tools (e.g. BatchCreateScreens).
+   * Reuses the same auth headers as callTool. Throws StitchError on HTTP errors.
+   */
+  async httpPost<T>(path: string, body: unknown): Promise<T> {
+    const url = `${this.config.baseUrl.replace(/\/mcp$/, '').replace(/\/$/, '')}/v1/${path}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...this.buildAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      const lowerText = text.toLowerCase();
+      let code: StitchErrorCode = 'UNKNOWN_ERROR';
+      if (response.status === 429 || lowerText.includes('rate limit')) {
+        code = 'RATE_LIMITED';
+      } else if (response.status === 404 || lowerText.includes('not found')) {
+        code = 'NOT_FOUND';
+      } else if (response.status === 403 || lowerText.includes('permission')) {
+        code = 'PERMISSION_DENIED';
+      } else if (response.status === 401 || lowerText.includes('401') || lowerText.includes('unauthorized') || lowerText.includes('unauthenticated')) {
+        code = 'AUTH_FAILED';
+      }
+      throw new StitchError({
+        code,
+        message: `HTTP ${response.status}: ${text || response.statusText}`,
+        recoverable: code === 'RATE_LIMITED',
+      });
+    }
+
+    return response.json() as Promise<T>;
+  }
+
   async listTools() {
     if (!this.isConnected) await this.connect();
     return this.client.listTools();

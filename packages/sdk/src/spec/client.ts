@@ -93,6 +93,13 @@ export interface StitchToolClientSpec {
   listTools: () => Promise<Tools>;
 
   /**
+   * Make a direct REST POST to the Stitch API.
+   * Used for endpoints not available as MCP tools (e.g. BatchCreateScreens).
+   * Throws StitchError on HTTP error responses.
+   */
+  httpPost: <T>(path: string, body: unknown) => Promise<T>;
+
+  /**
    * Close the connection.
    */
   close: () => Promise<void>;
