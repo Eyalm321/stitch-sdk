@@ -45,7 +45,11 @@ export const DownloadAssetsInputSchema = z.object({
   assetsSubdir: z.string().default('assets'),
 });
 
-export type DownloadAssetsInput = z.infer<typeof DownloadAssetsInputSchema>;
+/** Type passed by callers — fields with defaults (fileMode, assetsSubdir) are optional. */
+export type DownloadAssetsInput = z.input<typeof DownloadAssetsInputSchema>;
+
+/** Fully-resolved input after schema.parse() — all fields present. */
+export type DownloadAssetsInputParsed = z.infer<typeof DownloadAssetsInputSchema>;
 
 
 // ── Error Codes ────────────────────────────────────────────────────────────────

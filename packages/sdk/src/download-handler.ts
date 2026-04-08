@@ -18,6 +18,7 @@ import * as crypto from 'node:crypto';
 import * as cheerio from 'cheerio';
 import { Element } from 'domhandler';
 import type { StitchToolClientSpec } from './spec/client.js';
+import { DownloadAssetsInputSchema } from './spec/download.js';
 import type { DownloadAssetsSpec, DownloadAssetsInput, DownloadAssetsResult } from './spec/download.js';
 
 /** Atomically rename src → dest, falling back to copy+delete on EXDEV. */
@@ -38,14 +39,15 @@ async function atomicRename(src: string, dest: string): Promise<void> {
 export class DownloadAssetsHandler implements DownloadAssetsSpec {
   constructor(private client: StitchToolClientSpec) {}
 
-  async execute(input: DownloadAssetsInput): Promise<DownloadAssetsResult> {
+  async execute(rawInput: DownloadAssetsInput): Promise<DownloadAssetsResult> {
     try {
+      const input = DownloadAssetsInputSchema.parse(rawInput);
       const {
         projectId,
         outputDir,
-        fileMode = 0o600,
+        fileMode,
         tempDir,
-        assetsSubdir = 'assets',
+        assetsSubdir,
       } = input;
       const resolvedTempDir = tempDir ?? outputDir;
       // Guard assetsSubdir: strip any path separators — only use the basename.
