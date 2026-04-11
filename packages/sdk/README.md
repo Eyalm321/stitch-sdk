@@ -298,3 +298,6 @@ Program](https://bughunters.google.com/open-source-security).
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
+## Examples
+
+- [CI Visual Testing](./examples/ci-visual-testing/README.md) - Integrating Stitch SDK for visual regression testing.
