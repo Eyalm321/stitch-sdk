@@ -295,6 +295,13 @@ This is not an officially supported Google product. This project is not
 eligible for the [Google Open Source Software Vulnerability Rewards
 Program](https://bughunters.google.com/open-source-security).
 
+## Examples
+
+- [Basic Design Generation](./examples/basic-design)
+- [Design System Extraction](./examples/design-system-extraction)
+- [Stitch MCP Server](./examples/mcp-server)
+- [CI Visual Testing](./examples/ci-visual-testing/README.md) - Integrating Stitch SDK for visual regression testing.
+
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
