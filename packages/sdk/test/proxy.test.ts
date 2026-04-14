@@ -43,9 +43,25 @@ describe('StitchProxy', () => {
     expect(proxy).toBeDefined();
   });
 
-  it('should throw if no API key is provided', () => {
+  it('should throw if neither API key nor access token is provided', () => {
     delete process.env.STITCH_API_KEY;
-    expect(() => new StitchProxy({})).toThrow("StitchProxy requires an API key");
+    delete process.env.STITCH_ACCESS_TOKEN;
+    expect(() => new StitchProxy({})).toThrow("StitchProxy requires an API key (STITCH_API_KEY) or access token (STITCH_ACCESS_TOKEN)");
+  });
+
+  it('should initialize with accessToken instead of apiKey', () => {
+    delete process.env.STITCH_API_KEY;
+    delete process.env.STITCH_ACCESS_TOKEN;
+    const proxy = new StitchProxy({ accessToken: 'test-token' });
+    expect(proxy).toBeDefined();
+  });
+
+  it('should initialize with STITCH_ACCESS_TOKEN env var', () => {
+    delete process.env.STITCH_API_KEY;
+    process.env.STITCH_ACCESS_TOKEN = 'env-token';
+    const proxy = new StitchProxy({});
+    expect(proxy).toBeDefined();
+    delete process.env.STITCH_ACCESS_TOKEN;
   });
 
   it('should connect to stitch and fetch tools on start', async () => {
@@ -97,6 +113,37 @@ describe('Proxy Client Error Handling', () => {
   afterEach(() => {
     global.fetch = globalFetch;
     vi.clearAllMocks();
+  });
+
+  it('forwardToStitch should send Authorization: Bearer header when accessToken is configured', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: 'ok' })
+    } as Response);
+
+    await forwardToStitch({ url: 'http://test', accessToken: 'my-token', quotaProjectId: 'my-project' } as any, 'testMethod');
+
+    const fetchCall = mockFetch.mock.calls[0];
+    expect(fetchCall[1].headers).toEqual(expect.objectContaining({
+      Authorization: 'Bearer my-token',
+      'X-Goog-User-Project': 'my-project',
+    }));
+    expect(fetchCall[1].headers).not.toHaveProperty('X-Goog-Api-Key');
+  });
+
+  it('forwardToStitch should send X-Goog-Api-Key header when only apiKey is configured', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: 'ok' })
+    } as Response);
+
+    await forwardToStitch({ url: 'http://test', apiKey: 'my-api-key' } as any, 'testMethod');
+
+    const fetchCall = mockFetch.mock.calls[0];
+    expect(fetchCall[1].headers).toEqual(expect.objectContaining({
+      'X-Goog-Api-Key': 'my-api-key',
+    }));
+    expect(fetchCall[1].headers).not.toHaveProperty('Authorization');
   });
 
   it('forwardToStitch should throw Stitch API error on non-ok response', async () => {

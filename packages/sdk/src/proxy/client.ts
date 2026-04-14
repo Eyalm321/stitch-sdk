@@ -24,6 +24,20 @@ export interface ProxyContext {
 }
 
 /**
+ * Build the appropriate auth headers based on config.
+ */
+function buildAuthHeaders(config: StitchProxyConfig): Record<string, string> {
+    if (config.accessToken) {
+        const headers: Record<string, string> = { Authorization: `Bearer ${config.accessToken}` };
+        if (config.quotaProjectId) {
+            headers['X-Goog-User-Project'] = config.quotaProjectId;
+        }
+        return headers;
+    }
+    return { 'X-Goog-Api-Key': config.apiKey! };
+}
+
+/**
  * Forward a JSON-RPC request to Stitch.
  */
 export async function forwardToStitch(
@@ -45,7 +59,7 @@ export async function forwardToStitch(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-Goog-Api-Key': config.apiKey!,
+        ...buildAuthHeaders(config),
       },
       body: JSON.stringify(request),
     });
@@ -92,7 +106,7 @@ export async function initializeStitchConnection(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'X-Goog-Api-Key': ctx.config.apiKey!,
+      ...buildAuthHeaders(ctx.config),
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
